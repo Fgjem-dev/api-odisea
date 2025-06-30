@@ -105,19 +105,18 @@ return [
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
-            'charset' => env('DB_CHARSET', 'utf8'),
+            'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
-            'encrypt' => env('DB_ENCRYPT', 'yes'),
+            'encrypt' => false,
+            'trust_server_certificate' => true,
             'options' => [
                 PDO::SQLSRV_ATTR_ENCODING => PDO::SQLSRV_ENCODING_UTF8,
-                'TrustServerCertificate' => 1,
-                'Encrypt' => 'yes',
-                'MultipleActiveResultSets' => false,
+                'Encrypt' => false,
+                'LoginTimeout' => 30,
+                'TrustServerCertificate' => true,
             ],
         ]
-
     ],
 
     /*
