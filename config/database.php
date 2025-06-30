@@ -107,12 +107,9 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'trust_server_certificate' => true,
             'options' => [
-                PDO::ATTR_TIMEOUT => 60,
                 'TrustServerCertificate' => 1,
-                'Encrypt' => 'Optional',
-                'LoginTimeout' => 30,
+                'Encrypt' => 'NO',
             ],
         ]
     ],
