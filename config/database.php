@@ -109,8 +109,14 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
-            'encrypt' => env('DB_ENCRYPT', 'STRICT')
-        ],
+            'encrypt' => env('DB_ENCRYPT', 'yes'),
+            'options' => [
+                PDO::SQLSRV_ATTR_ENCODING => PDO::SQLSRV_ENCODING_UTF8,
+                'TrustServerCertificate' => 1,
+                'Encrypt' => 'yes',
+                'MultipleActiveResultSets' => false,
+            ],
+        ]
 
     ],
 
