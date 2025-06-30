@@ -99,20 +99,20 @@ return [
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
-            'url' => env('DB_URL'),
             'host' => env('DB_HOST', 'localhost'),
             'port' => env('DB_PORT', '1433'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
+            'database' => env('DB_DATABASE', 'forge'),
+            'username' => env('DB_USERNAME', 'forge'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'trust_server_certificate' => 'yes',
-            'encrypt' => 'yes',
+            'trust_server_certificate' => true,
             'options' => [
-                PDO::SQLSRV_ATTR_ENCODING => PDO::SQLSRV_ENCODING_UTF8,
-                'TrustServerCertificate' => 'yes',
+                PDO::ATTR_TIMEOUT => 60,
+                'TrustServerCertificate' => 1,
+                'Encrypt' => 'Optional',
+                'LoginTimeout' => 30,
             ],
         ]
     ],
