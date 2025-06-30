@@ -10,5 +10,4 @@ Route::middleware(['api_key'])->group(function () {
 
 });
 
- Route::get('/persona/{id}/imagen', [PersonaController::class, 'imagenGrande']);
- Route::get('/persona/{id}/imagen-thumb', [PersonaController::class, 'imagenMiniatura']);
+
