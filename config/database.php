@@ -105,10 +105,8 @@ return [
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
-            'options' => [
-                'Encrypt' => false,
-                'TrustServerCertificate' => true,
-            ]
+            'trust_server_certificate' => true,
+            'encryption' => 'no'
         ]
     ],
 
