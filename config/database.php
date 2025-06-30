@@ -108,14 +108,12 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+            'encrypt' => false,
             'trust_server_certificate' => true,
-            'encrypt' => 'Optional',
             'options' => [
                 PDO::SQLSRV_ATTR_ENCODING => PDO::SQLSRV_ENCODING_UTF8,
-                'TrustServerCertificate' => 'on',
             ],
         ]
-
     ],
 
     /*
