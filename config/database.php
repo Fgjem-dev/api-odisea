@@ -108,8 +108,11 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
-            'encrypt' => env('DB_ENCRYPT', false),
+            'options' => [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Desactiva encriptación
+                    ],
+            // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
+            // 'encrypt' => env('DB_ENCRYPT', false),
             'app_name' => 'Laravel Application',
         ],
 
