@@ -109,7 +109,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'trust_server_certificate' => true,
-            'encrypt' => false,
+            'encrypt' => 'false',
             'app_name' => 'Laravel Application',
         ],
 
