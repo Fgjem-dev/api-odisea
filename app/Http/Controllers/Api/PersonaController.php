@@ -10,6 +10,8 @@ use GuzzleHttp\Client;
 
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\GD\Driver;
+use Intervention\Image\Drivers\GD\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\Encoders\JpegEncoder;
 use PhpParser\Node\Stmt\TryCatch;
 
@@ -109,8 +111,21 @@ class PersonaController extends Controller
                 return response()->json(['message' => 'La imagen descargada esta vacía.'], 400);
             }
 
+
+            // Selección segura del driver
+            if (extension_loaded('gd') && class_exists(GdDriver::class)) {
+                $driver = new GdDriver();
+            } elseif (extension_loaded('imagick') && class_exists(ImagickDriver::class)) {
+                $driver = new ImagickDriver();
+            } else {
+                return response()->json([
+                    'message' => 'No se encontró un driver válido para procesar la imágenes.'
+                ], 500);
+            }
+
             // Aplicar Intervention Image
-            $manager = new ImageManager(new Driver());
+            // $manager = new ImageManager(new Driver());
+            $manager = new ImageManager($driver);
             $imagen = $manager->read($contenido);
 
             // Ajustar el tamaño según el tipo
