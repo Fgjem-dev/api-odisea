@@ -10,7 +10,7 @@ use GuzzleHttp\Client;
 
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\GD\Driver;
-use Intervention\Image\Drivers\GD\Driver as GdDriver;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\Encoders\JpegEncoder;
 use PhpParser\Node\Stmt\TryCatch;
