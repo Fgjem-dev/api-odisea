@@ -3,159 +3,144 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Odisea;
 use App\Models\Persona;
-use GuzzleHttp\Http\Request;
-use GuzzleHttp\Client;
-
+use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\GD\Driver;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
-use Intervention\Image\Encoders\JpegEncoder;
-use PhpParser\Node\Stmt\TryCatch;
+use GuzzleHttp\Client;
 
 class PersonaController extends Controller
 {
-  public function show($id) {
-
-//   $persona = Persona::where('rcvealerta', $id)->first();
-  $persona = Persona::where('rcvealerta', $id)
-                        ->whereHas('odisea', function ($query) {
-                            $query->where('TipoAlerta', '!=', 'PLATEADA');
-                        })
-                        ->with('odisea')
-                        ->first();
-
-
-    if (!$persona) {
-        return response()->json([
-            'message' => 'Registro de persona no encontrado'
-        ], 404);
+    protected function getPersona($id): ?Persona
+    {
+        return Persona::where('rcvealerta', $id)
+            ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', '!=', 'PLATEADA'))
+            ->with('odisea')
+            ->first();
     }
 
-    $persona->ruta_imagen = "http://10.210.4.156/f2_alertaodisea/Imagenes/{$persona->rcvealerta}.jpeg";
-    return response()->json($persona);
+    protected function getPlateada($id): ?Persona
+    {
+        return Persona::where('rcvealerta', $id)
+            ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', 'PLATEADA'))
+            ->with('odisea')
+            ->first();
+    }
 
-   }
+    public function show($id)
+    {
+        $persona = $this->getPersona($id);
 
-   public function imagenGrande($id) {
+        if (!$persona) {
+            return response()->json(['message' => 'Registro de persona no encontrado'], 404);
+        }
 
-    return $this->procesarImagen($id, 'grande');
+        $persona->ruta_imagen = "http://10.210.4.156/f2_alertaodisea/Imagenes/{$persona->rcvealerta}.jpeg";
 
-   }
+        return response()->json($persona);
+    }
 
-   public function imagenMiniatura($id) {
+    public function imagenGrande($id)
+    {
+        return $this->procesarImagen($id, 'grande');
+    }
 
-    return $this->procesarImagen($id, 'thumb');
+    public function imagenMiniatura($id)
+    {
+        return $this->procesarImagen($id, 'thumb');
+    }
 
-   }
-
-   public function procesarImagen($id, $tipo = 'grande')
-   {
-        $persona = Persona::where('rcvealerta', $id)
-                    ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', '!=', 'PLATEADA'))
-                    ->with('odisea')->first();
-
-        $plateada = Persona::where('rcvealerta', $id)
-                    ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', 'PLATEADA'))
-                    ->with('odisea')
-                    ->first();
+    protected function procesarImagen($id, $tipo = 'grande')
+    {
+        $persona = $this->getPersona($id);
+        $plateada = $this->getPlateada($id);
 
         if (!$persona && !$plateada) {
-            return response()->json([
-                'message' => 'Persona no encontrada'
-            ], 404);
+            return response()->json(['message' => 'Persona no encontrada'], 404);
         }
 
-        // Determinar tipo
         $modelo = $persona ?: $plateada;
         $nombreArchivo = "{$modelo->rcvealerta}.jpeg";
-
-        if ($persona) {
-            $directorio = $tipo === 'thumb' ? 'personas/thumbs' : 'personas/grandes';
-            // Ruta remota
-            $urlRemota = "http://10.210.4.156/f2_alertaodisea/Imagenes/{$nombreArchivo}";
-
-        }  else {
-            $directorio = $tipo === 'thumb' ? 'plateadas/thumbs' : 'plateadas/grandes';
-            // Ruta remota
-            $urlRemota = "http://10.210.4.156/f1_alertaplata/Imagenes/{$nombreArchivo}";
-        }
-
+        $directorio = $this->obtenerDirectorio($tipo, $persona ? 'personas' : 'plateadas');
         $rutaLocal = storage_path("app/public/{$directorio}/{$nombreArchivo}");
+        $urlRemota = $this->obtenerUrlRemota($modelo->rcvealerta, (bool) $persona);
 
-        // Si ya existe la imagen, regresar
         if (file_exists($rutaLocal)) {
-            return response()->file($rutaLocal, ['Content-type' => 'image/jpeg']);
+            return response()->file($rutaLocal, ['Content-Type' => 'image/jpeg']);
         }
 
         try {
-            // Descargar la imagen de la URL externa
-            $client = new \GuzzleHttp\Client();
-            $respuesta = $client->get($urlRemota, [
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0'
-                ]
-            ]);
+            $contenido = $this->descargarImagen($urlRemota);
+            $imagen = $this->procesarConIntervention($contenido, $tipo);
 
-            if ($respuesta->getStatusCode() !== 200) {
-                return response()->json([
-                    'message' => 'Imagen remota no disponible'
-                ], 404);
-            }
+            Storage::makeDirectory("public/{$directorio}");
 
-            $contenido = (string) $respuesta->getBody();
-
-            if (empty($contenido)) {
-                return response()->json(['message' => 'La imagen descargada esta vacía.'], 400);
-            }
-
-
-            // Selección segura del driver
-            if (extension_loaded('gd') && class_exists(GdDriver::class)) {
-                $driver = new GdDriver();
-            } elseif (extension_loaded('imagick') && class_exists(ImagickDriver::class)) {
-                $driver = new ImagickDriver();
-            } else {
-                return response()->json([
-                    'message' => 'No se encontró un driver válido para procesar la imágenes.'
-                ], 500);
-            }
-
-            // Aplicar Intervention Image
-            // $manager = new ImageManager(new Driver());
-            $manager = new ImageManager($driver);
-            $imagen = $manager->read($contenido);
-
-            // Ajustar el tamaño según el tipo
-            if ($tipo === 'thumb') {
-                $imagen = $imagen->resize(100, 100);
-            } else {
-                $imagen->resize(800, 800, function ($c) {
-                    $c->aspectRatio();
-                    $c->upsize();
-                });
-            }
-
-            // Verificar que la carpeta exista
-            if (!file_exists(dirname($rutaLocal))) {
-                mkdir(dirname($rutaLocal), 0777, true);
-            }
-
-            // Guardar en disco local
             file_put_contents($rutaLocal, $imagen->toJpeg(80));
 
-            // Retornar imagen
             return response($imagen->toJpeg(80))
-                    ->header('Content-type', 'image/jpeg');
-
-
-        } catch (\Exception $e) {
+                ->header('Content-Type', 'image/jpeg');
+        } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Error al procesar la imagen.', 'error' => $e->getMessage()
+                'message' => 'Error al procesar la imagen.',
+                'error' => $e->getMessage()
             ], 500);
         }
-   }
+    }
 
+    protected function obtenerDirectorio(string $tipo, string $grupo): string
+    {
+        return "{$grupo}/" . ($tipo === 'thumb' ? 'thumbs' : 'grandes');
+    }
+
+    protected function obtenerUrlRemota(string $nombreArchivo, bool $esPersona): string
+    {
+        $base = $esPersona
+            ? "http://10.210.4.156/f2_alertaodisea/Imagenes"
+            : "http://10.210.4.156/f1_alertaplata/Imagenes";
+
+        return "{$base}/{$nombreArchivo}.jpeg";
+    }
+
+    protected function descargarImagen(string $url): string
+    {
+        $client = new Client(['timeout' => 10.0]);
+
+        $respuesta = $client->get($url, [
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0'
+            ]
+        ]);
+
+        if ($respuesta->getStatusCode() !== 200) {
+            throw new \Exception("No se pudo acceder a la imagen remota.");
+        }
+
+        return (string) $respuesta->getBody();
+    }
+
+    protected function procesarConIntervention(string $contenido, string $tipo)
+    {
+        $driver = $this->obtenerDriverImagen();
+
+        $manager = new ImageManager($driver);
+        $imagen = $manager->read($contenido);
+
+        return $tipo === 'thumb'
+            ? $imagen->resize(80, 80)
+            : $imagen->resize(320, 320, fn ($c) => $c->aspectRatio()->upsize());
+    }
+
+    protected function obtenerDriverImagen()
+    {
+        if (extension_loaded('gd')) {
+            return new GdDriver();
+        }
+
+        if (extension_loaded('imagick')) {
+            return new ImagickDriver();
+        }
+
+        throw new \RuntimeException("No se encontró un driver válido para imágenes.");
+    }
 }
