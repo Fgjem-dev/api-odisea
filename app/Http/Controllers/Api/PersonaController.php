@@ -12,19 +12,10 @@ use GuzzleHttp\Client;
 
 class PersonaController extends Controller
 {
-    protected function getPersona($id): ?Persona
-    {
-        return Persona::where('rcvealerta', $id)
-            ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', '!=', 'PLATEADA'))
-            ->with('odisea')
-            ->first();
-    }
-
-    protected function getPlateada($id): ?Persona
-    {
-        return Persona::where('rcvealerta', $id)
-            ->whereHas('odisea', fn ($q) => $q->where('TipoAlerta', 'PLATEADA'))
-            ->with('odisea')
+    protected function getPersona($id): ?Persona{
+        return Persona::select('rcvealerta')
+            ->where('rcvealerta', $id)
+            ->with('odisea:ID,TipoAlerta')
             ->first();
     }
 
@@ -51,20 +42,28 @@ class PersonaController extends Controller
         return $this->procesarImagen($id, 'thumb');
     }
 
-    protected function procesarImagen($id, $tipo = 'grande')
-    {
-        $persona = $this->getPersona($id);
-        $plateada = $this->getPlateada($id);
+    protected function procesarImagen($id, $tipo = 'grande'){
+        $type = "{$tipo}s";
 
-        if (!$persona && !$plateada) {
+        $test = Storage::disk('public')->get("personas/$type/{$id}.jpeg");
+        $test2 = Storage::disk('public')->get("plateadas/$type/{$id}.jpeg");
+
+        if ($test || $test2){
+            return response($test ?? $test2)->header('Content-Type', 'image/jpeg');
+        }
+
+        $persona = $this->getPersona($id);
+
+        if (!$persona) {
             return response()->json(['message' => 'Persona no encontrada'], 404);
         }
 
-        $modelo = $persona ?: $plateada;
-        $nombreArchivo = "{$modelo->rcvealerta}.jpeg";
-        $directorio = $this->obtenerDirectorio($tipo, $persona ? 'personas' : 'plateadas');
+        $isPerson = $persona->odisea->TipoAlerta !== 'PLATEADA';
+        $nombreArchivo = "{$persona->rcvealerta}.jpeg";
+
+        $directorio = $this->obtenerDirectorio($tipo, $isPerson ? 'personas' : 'plateadas');
         $rutaLocal = storage_path("app/public/{$directorio}/{$nombreArchivo}");
-        $urlRemota = $this->obtenerUrlRemota($modelo->rcvealerta, (bool) $persona);
+        $urlRemota = $this->obtenerUrlRemota($persona->rcvealerta, $isPerson);
 
         if (file_exists($rutaLocal)) {
             return response()->file($rutaLocal, ['Content-Type' => 'image/jpeg']);
